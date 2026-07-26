@@ -29,7 +29,7 @@ const ALLOWED_EMAILS = [
 // 2. Your OAuth Client ID (same one you put in index.html).
 //    Used to confirm the token was issued for THIS app, not some other site.
 // ---------------------------------------------------------------------------
-const CLIENT_ID = "30409772352-r4alueg6n7re1sc4f1flr93ssqlkb87a.apps.googleusercontent.com";  // e.g. "1234567890-abcdef.apps.googleusercontent.com"
+const CLIENT_ID = "";  // e.g. "1234567890-abcdef.apps.googleusercontent.com"
 
 const SHEET_NAME = "Main";
 
