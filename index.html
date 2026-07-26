@@ -422,6 +422,8 @@ html[data-theme="dark"] .overlay{background:rgba(6,7,8,.6);}
 .conn-strip.demo{background:#fff6e0;color:#8a6400;border:1px solid #f0dca0;}
 html[data-theme="dark"] .conn-strip.demo{background:rgba(242,183,5,.09);color:#f2c14e;border:1px solid rgba(242,183,5,.25);}
 .conn-strip.live{background:#e7f8ee;color:#1c7a45;border:1px solid #bfe8d0;}
+.conn-strip.err{background:#fdecec;color:#a32020;border:1px solid #f2c0c0;line-height:1.5;}
+html[data-theme="dark"] .conn-strip.err{background:rgba(244,91,105,.10);color:#ff9aa2;border:1px solid rgba(244,91,105,.3);}
 html[data-theme="dark"] .conn-strip.live{background:rgba(61,220,114,.09);color:#6fe39a;border:1px solid rgba(61,220,114,.25);}
 
 .mini{font-size:11px;color:var(--text-faint);}
@@ -530,6 +532,27 @@ html[data-theme="dark"] .conn-strip.live{background:rgba(61,220,114,.09);color:#
   .stat-grid{grid-template-columns:1fr;}
   .hero-num{font-size:34px;}
 }
+
+/* Mobile vertical stage list (replaces the chevron stepper on phones) */
+.stage-list{display:flex;flex-direction:column;gap:8px;}
+.stage-row{
+  display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  background:var(--surface-2);border:1px solid var(--border-soft);
+  border-left:4px solid var(--seg-color);
+  border-radius:11px;padding:13px 13px;min-height:56px;color:var(--text);
+}
+.stage-row:active{background:var(--surface-3);}
+.stage-row .sr-idx{
+  width:23px;height:23px;border-radius:50%;flex:none;
+  background:var(--seg-color);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+}
+.stage-row .sr-label{font-size:13.5px;font-weight:600;flex:1;line-height:1.3;}
+.stage-row .sr-count{
+  font-family:var(--font-display);font-size:20px;font-weight:600;color:var(--seg-color);
+}
+.stage-row .sr-chev{color:var(--text-faint);font-size:19px;line-height:1;}
 
 /* Offline / sync banner */
 .net-banner{
@@ -733,18 +756,26 @@ async function apiCall(payload){
   return data;
 }
 
+let LOAD_ERROR = null;   // set when the sheet can't be read, shown on screen
+
 async function loadClaims(){
+  LOAD_ERROR = null;
   if(SCRIPT_URL){
+    // A real backend is configured: NEVER fall back to sample data. Showing
+    // fake claims that look real in a live shop is worse than showing nothing.
     try{
       const data = await apiCall({action:"list"});
       claims = (data && data.rows) || [];
-      return;
     }catch(e){
+      claims = [];
+      LOAD_ERROR = (e.message === "unauthorised")
+        ? "Your Google account isn't on the allowed list for this app. Ask the owner to add your email to ALLOWED_EMAILS in the Apps Script backend."
+        : "Couldn't reach the Google Sheet. Check your connection, or the SCRIPT_URL / deployment settings.";
       console.warn("Backend load failed.", e);
-      if(e.message === "unauthorised") { claims = []; return; }
-      toast("Couldn't reach the sheet — showing sample data.");
     }
+    return;
   }
+  // No backend configured at all -> demo mode, clearly flagged in the UI.
   if(claims.length===0) seedDemo();
 }
 async function persistClaim(claim, isNew){
@@ -821,6 +852,39 @@ async function boot(){
   render();
 }
 
+/* ==========================================================================
+   ENVIRONMENT DETECTION
+   The app doesn't just resize — it decides which build of each screen to
+   render. IS_MOBILE drives structural choices (vertical stage list vs
+   chevron stepper, cards vs table, bottom bar vs sidebar), not only CSS.
+   ========================================================================== */
+const MOBILE_BREAKPOINT = 900;
+let IS_MOBILE = false;
+
+function detectEnv(){
+  const narrow = window.innerWidth <= MOBILE_BREAKPOINT;
+  const touch  = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+  const coarse = window.matchMedia && window.matchMedia("(pointer:coarse)").matches;
+  // Narrow screen is decisive; a touch/coarse pointer confirms a real phone or
+  // tablet even if it reports an unusually wide viewport.
+  const wasMobile = IS_MOBILE;
+  IS_MOBILE = narrow || (touch && coarse && window.innerWidth <= 1100);
+
+  const html = document.documentElement;
+  html.classList.toggle("is-mobile", IS_MOBILE);
+  html.classList.toggle("is-desktop", !IS_MOBILE);
+  return wasMobile !== IS_MOBILE;   // true if we just crossed the boundary
+}
+
+// Re-render when the environment actually changes (rotation, window resize,
+// desktop-site toggle) so the right build of each screen is shown.
+window.addEventListener("resize", ()=>{
+  const changed = detectEnv();
+  if(!IS_MOBILE) toggleMobileNav(false);
+  if(changed && currentUser) render();
+});
+window.addEventListener("orientationchange", ()=>{ detectEnv(); if(currentUser) render(); });
+
 /* ---------- RENDER ROUTER ---------- */
 function render(){
   updateCounts();
@@ -895,6 +959,20 @@ function viewDashboard(){
       <div id="globalSearchResults"></div>
     </div>
 
+    ${IS_MOBILE ? `
+    <div class="tread">
+      <div class="tread-head"><h3>Claim Lifecycle</h3><span class="mini">tap a stage</span></div>
+      <div class="stage-list">
+        ${WORKFLOW_ORDER.map((k,i)=>`
+          <button class="stage-row" onclick="jumpTo('${k}')" style="--seg-color:${STATUSES[k].color}">
+            <span class="sr-idx">${i+1}</span>
+            <span class="sr-label">${STATUSES[k].label}</span>
+            <span class="sr-count">${counts[k]}</span>
+            <span class="sr-chev">›</span>
+          </button>
+        `).join("")}
+      </div>
+    </div>` : `
     <div class="tread">
       <div class="tread-head"><h3>Claim Lifecycle</h3><span class="mini">click a stage to open it</span></div>
       <div class="tread-row">
@@ -907,7 +985,7 @@ function viewDashboard(){
           </div>
         `).join("")}
       </div>
-    </div>
+    </div>`}
 
     <div class="stat-grid">
       ${statCard("Approved Amount", "₹"+totalApproved.toLocaleString('en-IN'), "var(--s-pass)", null, STAT_ICONS.money_approved)}
@@ -959,8 +1037,12 @@ function jumpTo(view){
   window.scrollTo({top:0, behavior:"instant"});
 }
 function connStrip(){
-  if(SCRIPT_URL) return `<div class="conn-strip live">🟢 Connected to Google Sheet backend</div>`;
-  return `<div class="conn-strip demo">🟡 Demo mode — data lives in this browser tab only. Open <b>Settings</b> to connect your Google Sheet.</div>`;
+  if(LOAD_ERROR){
+    return `<div class="conn-strip err">🔴 <b>Not showing your sheet data.</b> ${esc(LOAD_ERROR)}
+      <button class="btn btn-sm" style="margin-left:auto" onclick="boot()">Retry</button></div>`;
+  }
+  if(SCRIPT_URL) return `<div class="conn-strip live">🟢 Connected to Google Sheet — ${claims.length} claim${claims.length===1?'':'s'} loaded</div>`;
+  return `<div class="conn-strip demo">🟡 <b>Demo mode — this is sample data, not your real claims.</b> Connect your Google Sheet in Settings.</div>`;
 }
 
 /* ---------- TABLE VIEW ---------- */
@@ -1485,12 +1567,32 @@ window.addEventListener("offline", updateNetBanner);
 /* ---------- PWA SERVICE WORKER ---------- */
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("sw.js").catch(e=>console.warn("SW registration skipped:", e));
+    navigator.serviceWorker.register("sw.js").then(reg=>{
+      // If a new version is waiting, activate it and reload once so the user
+      // is never stuck on an old copy of the app.
+      if(reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+      reg.addEventListener("updatefound", ()=>{
+        const nw = reg.installing;
+        if(!nw) return;
+        nw.addEventListener("statechange", ()=>{
+          if(nw.state === "installed" && navigator.serviceWorker.controller){
+            nw.postMessage("SKIP_WAITING");
+          }
+        });
+      });
+      reg.update();
+    }).catch(e=>console.warn("SW registration skipped:", e));
+    let _reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", ()=>{
+      if(_reloaded) return; _reloaded = true;
+      location.reload();
+    });
   });
 }
 
 /* ---------- INIT ---------- */
-window.addEventListener("load", ()=>{ initLogin(); updateNetBanner(); });
+detectEnv();   // run immediately so the very first render is correct
+window.addEventListener("load", ()=>{ detectEnv(); initLogin(); updateNetBanner(); });
 </script>
 </body>
 </html>
