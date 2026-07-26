@@ -389,6 +389,9 @@ html[data-theme="dark"] .overlay{background:rgba(6,7,8,.6);}
 .field-row.single{grid-template-columns:1fr;}
 .field{display:flex;flex-direction:column;gap:6px;}
 .field label{font-size:11.5px;color:var(--text-dim);font-weight:500;}
+.field label .req{color:var(--s-reject);font-weight:700;margin-left:2px;}
+.req-legend{font-size:11px;color:var(--text-faint);margin-bottom:14px;}
+.req-legend .req{color:var(--s-reject);font-weight:700;}
 .field input,.field select,.field textarea{
   background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
   padding:9px 12px;color:var(--text);font-size:13.5px;font-family:inherit;outline:none; transition:.12s;
@@ -564,6 +567,119 @@ html[data-theme="dark"] .conn-strip.live{background:rgba(61,220,114,.09);color:#
 .grow{flex:1;}
 .flex{display:flex;align-items:center;}
 .gap8{gap:8px;}
+
+
+/* ==========================================================================
+   ENVIRONMENT-DRIVEN MOBILE RULES
+   Mirrors every @media(max-width:900px) rule above, but keyed to the
+   html.is-mobile class that detectEnv() sets from screen width AND
+   touch/pointer type. This is what makes the phone layout appear even
+   when the browser reports a desktop-width viewport (e.g. Chrome's
+   'Desktop site' toggle, or a large tablet).
+   ========================================================================== */
+html.is-mobile #app.show{grid-template-columns:1fr;}
+html.is-mobile .mobile-topbar{
+    display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40;
+    background:linear-gradient(190deg, var(--rail-bg-top), var(--rail-bg-bottom) 75%);
+    padding:12px 16px;color:#fff;
+  }
+html.is-mobile .mobile-topbar .mark{
+    width:28px;height:28px;flex:none;clip-path:polygon(16% 0,100% 0,84% 100%,0% 100%);
+    background:#fff;display:flex;align-items:center;justify-content:center;
+  }
+html.is-mobile .mobile-topbar .mark::after{content:"C";font-family:var(--font-display);font-weight:700;font-size:13px;color:var(--primary);}
+html.is-mobile .mobile-topbar b{font-family:var(--font-display);font-size:16px;font-weight:600;}
+html.is-mobile .hamburger{
+    margin-left:auto;background:rgba(255,255,255,.12);border:none;border-radius:8px;
+    width:38px;height:38px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex:none;
+  }
+html.is-mobile .mobile-nav-backdrop.show{
+    display:block;position:fixed;inset:0;background:rgba(10,14,24,.5);z-index:58;
+  }
+html.is-mobile .sidebar{
+    position:fixed;top:0;left:0;height:100vh;width:min(78vw,300px);
+    transform:translateX(-105%);transition:transform .25s ease;z-index:59;
+    box-shadow:24px 0 50px rgba(0,0,0,.35);
+  }
+html.is-mobile .sidebar.mobile-open{transform:translateX(0);}
+html.is-mobile .chart-grid{grid-template-columns:1fr;}
+html.is-mobile .bottom-nav{
+    display:flex;position:fixed;left:0;right:0;bottom:0;z-index:45;
+    background:var(--surface);border-top:1px solid var(--border);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    box-shadow:0 -4px 18px rgba(30,40,70,.10);
+  }
+html.is-mobile[data-theme="dark"] .bottom-nav{box-shadow:0 -4px 18px rgba(0,0,0,.35);}
+html.is-mobile .bn-item{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    padding:7px 2px;border:none;background:none;color:var(--text-faint);
+    font-size:10.5px;font-weight:600;border-radius:10px;min-height:52px;
+  }
+html.is-mobile .bn-item .bn-ico{font-size:19px;line-height:1;}
+html.is-mobile .bn-item.active{color:var(--primary);background:var(--primary-soft);}
+html.is-mobile .bn-item.bn-fab .bn-ico{
+    width:42px;height:42px;border-radius:50%;background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:24px;margin-top:-16px;
+    box-shadow:0 6px 16px rgba(35,63,132,.4);
+  }
+html.is-mobile .bn-item.bn-fab{color:var(--primary);}
+html.is-mobile /* leave room for the bar */
+  .main{padding-bottom:86px !important;}
+html.is-mobile .table-wrap table{display:none;}
+html.is-mobile .card-list{display:flex;flex-direction:column;gap:10px;padding:12px;}
+html.is-mobile .claim-card{
+    background:var(--surface-2);border:1px solid var(--border-soft);border-radius:13px;
+    padding:13px 14px;display:flex;flex-direction:column;gap:9px;
+  }
+html.is-mobile .claim-card:active{background:var(--surface-3);}
+html.is-mobile .cc-top{display:flex;align-items:flex-start;gap:10px;}
+html.is-mobile .cc-name{font-weight:700;font-size:14.5px;color:var(--text);line-height:1.25;}
+html.is-mobile .cc-mobile{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:2px;}
+html.is-mobile .cc-badge{margin-left:auto;flex:none;}
+html.is-mobile .cc-item{font-size:12.5px;color:var(--text-dim);line-height:1.4;}
+html.is-mobile .cc-meta{display:flex;flex-wrap:wrap;gap:6px;}
+html.is-mobile .cc-chip{
+    font-size:10.5px;font-family:var(--font-mono);background:var(--surface-3);
+    color:var(--text-dim);padding:3px 8px;border-radius:20px;
+  }
+html.is-mobile .cc-chip b{color:var(--text);font-weight:600;}
+html.is-mobile .main{padding:16px 14px 60px;}
+html.is-mobile .topbar h2{font-size:21px;}
+html.is-mobile .topbar{margin-bottom:16px;}
+html.is-mobile /* the header "+ New Claim" is redundant with the FAB */
+  .topbar .btn-primary{display:none;}
+html.is-mobile .hero{padding:20px 18px;border-radius:16px;}
+html.is-mobile .hero-num{font-size:40px;}
+html.is-mobile .hero-right{width:100%;}
+html.is-mobile .hero-chip{flex:1;min-width:0;padding:10px 12px;}
+html.is-mobile .global-search{padding:14px;border-radius:14px;}
+html.is-mobile .global-search .gs-row{padding:12px 14px;}
+html.is-mobile .global-search input{font-size:16px;}
+html.is-mobile /* 16px stops iOS zoom-on-focus */
+
+  .stat-grid{grid-template-columns:1fr 1fr;gap:10px;}
+html.is-mobile .tread{padding:16px 16px 14px;border-radius:16px;}
+html.is-mobile .panel{padding:16px;border-radius:16px;}
+html.is-mobile .chart-grid{gap:12px;}
+html.is-mobile .tabs-bar{gap:4px;margin-bottom:14px;-webkit-overflow-scrolling:touch;}
+html.is-mobile .tab{padding:9px 13px;min-height:42px;}
+html.is-mobile .search-box{padding:11px 13px;}
+html.is-mobile .search-box input{font-size:16px;}
+html.is-mobile /* full-screen form on phones */
+  .overlay{justify-content:stretch;}
+html.is-mobile .drawer{width:100%;border-left:none;animation:slideUp .22s ease;}
+@keyframes slideUp{from{transform:translateY(18px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+html.is-mobile .drawer-head{padding:16px 18px;padding-top:calc(16px + env(safe-area-inset-top));}
+html.is-mobile .drawer-body{padding:18px 18px calc(28px + env(safe-area-inset-bottom));}
+html.is-mobile .field input, html.is-mobile .field select, html.is-mobile .field textarea{font-size:16px;padding:12px 13px;}
+html.is-mobile .stage-select-row select{font-size:16px;padding:14px 13px;}
+html.is-mobile .drawer-actions{
+    padding-bottom:calc(12px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--border-soft);margin-top:16px;
+  }
+html.is-mobile .drawer-actions .btn{min-height:48px;flex:1;justify-content:center;}
+html.is-mobile .btn{min-height:44px;}
+html.is-mobile .item-result{padding:12px;}
 </style>
 </head>
 <body>
@@ -742,6 +858,12 @@ let ID_TOKEN = null;   // set at sign-in
 
 async function apiCall(payload){
   if(!SCRIPT_URL) return null;
+  // Make sure the token is still good; renew silently if not.
+  const ok = await ensureToken();
+  if(!ok){
+    showLoginScreen();
+    throw new Error("session_expired");
+  }
   // text/plain avoids a CORS preflight, which Apps Script doesn't answer
   const res = await fetch(SCRIPT_URL, {
     method:"POST",
@@ -770,6 +892,8 @@ async function loadClaims(){
       claims = [];
       LOAD_ERROR = (e.message === "unauthorised")
         ? "Your Google account isn't on the allowed list for this app. Ask the owner to add your email to ALLOWED_EMAILS in the Apps Script backend."
+        : (e.message === "session_expired")
+        ? "Your sign-in expired. Please sign in again."
         : "Couldn't reach the Google Sheet. Check your connection, or the SCRIPT_URL / deployment settings.";
       console.warn("Backend load failed.", e);
     }
@@ -789,19 +913,115 @@ async function persistDelete(id){
   catch(e){ toast("Delete didn't sync to the sheet."); }
 }
 
-/* ---------- LOGIN ---------- */
+/* ==========================================================================
+   LOGIN + SESSION
+   You stay signed in for 24 hours. The short-lived Google token behind the
+   scenes is renewed silently in the background, so a refresh (or reopening
+   the app from the home screen) does not ask you to sign in again.
+   ========================================================================== */
+const SESSION_KEY = "cdt_session_v2";
+const SESSION_MAX_AGE = 24 * 60 * 60 * 1000;   // 24 hours
+
+function saveSession(user, token){
+  try{
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      name:user.name, email:user.email, picture:user.picture,
+      token: token || null, ts: Date.now()
+    }));
+  }catch(e){ /* private mode / storage disabled — app still works, just no persistence */ }
+}
+function loadSession(){
+  try{
+    const raw = localStorage.getItem(SESSION_KEY);
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    if(!s || !s.ts || (Date.now() - s.ts) > SESSION_MAX_AGE){ clearSession(); return null; }
+    return s;
+  }catch(e){ return null; }
+}
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+
+function tokenExpired(tok){
+  if(!tok) return true;
+  try{
+    const p = JSON.parse(atob(tok.split(".")[1]));
+    return !p.exp || (p.exp*1000 - 60000) < Date.now();   // 1 min safety margin
+  }catch(e){ return true; }
+}
+
+/* Ask Google for a fresh token without showing any UI. Works because the user
+   already consented; Google just re-issues silently while their session lasts. */
+let _silentResolve = null;
+function refreshTokenSilently(){
+  return new Promise((resolve)=>{
+    if(!GOOGLE_CLIENT_ID || !window.google || !google.accounts || !google.accounts.id){
+      resolve(false); return;
+    }
+    _silentResolve = resolve;
+    let done = false;
+    const finish = (ok)=>{ if(done) return; done = true; _silentResolve = null; resolve(ok); };
+    try{
+      google.accounts.id.prompt((n)=>{
+        // If Google can't do it silently, fall back to asking properly.
+        if(n && (n.isNotDisplayed && n.isNotDisplayed() || n.isSkippedMoment && n.isSkippedMoment())) finish(false);
+      });
+    }catch(e){ finish(false); return; }
+    setTimeout(()=>finish(!tokenExpired(ID_TOKEN)), 4000);
+    _silentResolve = (ok)=>finish(ok);
+  });
+}
+
+/* Guarantees a usable token before an API call, or sends the user to sign-in. */
+async function ensureToken(){
+  if(!GOOGLE_CLIENT_ID) return true;          // demo / unconfigured
+  if(!tokenExpired(ID_TOKEN)) return true;
+  const ok = await refreshTokenSilently();
+  if(ok && !tokenExpired(ID_TOKEN)) return true;
+  return false;
+}
+
+function showLoginScreen(){
+  currentUser = null;
+  document.getElementById("app").classList.remove("show");
+  document.getElementById("loginScreen").style.display = "flex";
+}
+
 function initLogin(){
   setTheme("light");
   if(GOOGLE_CLIENT_ID && window.google){
-    const initOpts = {client_id: GOOGLE_CLIENT_ID, callback: onGoogleCredential};
+    const initOpts = {
+      client_id: GOOGLE_CLIENT_ID,
+      callback: onGoogleCredential,
+      auto_select: true,               // silently reuse the existing Google session
+      itp_support: true
+    };
     if(ORG_DOMAIN) initOpts.hd = ORG_DOMAIN;
     google.accounts.id.initialize(initOpts);
     google.accounts.id.renderButton(document.getElementById("gsiBtnWrap"), {theme:"outline", size:"large", shape:"pill", text:"continue_with"});
   }else{
     document.getElementById("gsiBtnWrap").innerHTML = '<div class="mini" style="padding:10px 0;">Google Sign‑In not configured yet.</div>';
   }
-  document.getElementById("demoLoginBtn").onclick = ()=> logIn({name:"Store User", email:"demo@store.local", picture:""});
+  document.getElementById("demoLoginBtn").onclick = ()=>{
+    clearSession();
+    logIn({name:"Store User", email:"demo@store.local", picture:""}, false);
+  };
+
+  // Restore a still-valid session so a refresh doesn't bounce you to sign-in.
+  const s = loadSession();
+  if(s){
+    ID_TOKEN = s.token || null;
+    logIn({name:s.name, email:s.email, picture:s.picture}, false);
+    if(tokenExpired(ID_TOKEN) && GOOGLE_CLIENT_ID){
+      refreshTokenSilently().then(ok=>{
+        if(ok) boot();                       // reload data with the fresh token
+        else if(!ID_TOKEN) showLoginScreen(); // couldn't renew — ask properly
+      });
+    }
+  }else if(GOOGLE_CLIENT_ID && window.google){
+    google.accounts.id.prompt();             // returning user: try silent sign-in
+  }
 }
+
 function onGoogleCredential(resp){
   try{
     ID_TOKEN = resp.credential;                       // sent to the backend for verification
@@ -812,10 +1032,14 @@ function onGoogleCredential(resp){
       toast("This Google account isn't authorised for this store.");
       return;
     }
-    logIn({name:payload.name, email:payload.email, picture:payload.picture});
+    const user = {name:payload.name, email:payload.email, picture:payload.picture};
+    saveSession(user, ID_TOKEN);
+    if(_silentResolve){ const r=_silentResolve; _silentResolve=null; r(true); }
+    logIn(user, true);
   }catch(e){ toast("Sign-in failed. Try demo mode."); }
 }
-function logIn(user){
+
+function logIn(user, reload){
   currentUser = user;
   document.getElementById("loginScreen").style.display="none";
   document.getElementById("app").classList.add("show");
@@ -823,12 +1047,15 @@ function logIn(user){
   document.getElementById("userRole").textContent = user.email;
   const av = document.getElementById("avatarBox");
   av.innerHTML = user.picture ? `<img src="${user.picture}">` : (user.name||"?").slice(0,1).toUpperCase();
-  boot();
+  if(reload !== false || claims.length === 0) boot();
 }
+
 document.getElementById("logoutBtn").onclick = ()=>{
-  currentUser=null;
-  document.getElementById("app").classList.remove("show");
-  document.getElementById("loginScreen").style.display="flex";
+  clearSession();
+  ID_TOKEN = null;
+  claims = [];
+  try{ if(window.google && google.accounts) google.accounts.id.disableAutoSelect(); }catch(e){}
+  showLoginScreen();
 };
 
 /* ---------- NAV ---------- */
@@ -864,11 +1091,19 @@ let IS_MOBILE = false;
 function detectEnv(){
   const narrow = window.innerWidth <= MOBILE_BREAKPOINT;
   const touch  = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
-  const coarse = window.matchMedia && window.matchMedia("(pointer:coarse)").matches;
-  // Narrow screen is decisive; a touch/coarse pointer confirms a real phone or
-  // tablet even if it reports an unusually wide viewport.
+  const coarse = !!(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
+
+  // Physical screen, not the viewport. Chrome's "Desktop site" toggle fakes a
+  // wide viewport but cannot change the real screen size.
+  const shortEdge = Math.min(screen.width || 9999, screen.height || 9999);
+  const smallScreen = shortEdge <= 820;
+
+  // User-agent hints. userAgentData is the modern signal; the regex covers the rest.
+  const uaMobile = (navigator.userAgentData && navigator.userAgentData.mobile === true)
+    || /Android|iPhone|iPod|iPad|Mobile|Silk|Kindle|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent || "");
+
   const wasMobile = IS_MOBILE;
-  IS_MOBILE = narrow || (touch && coarse && window.innerWidth <= 1100);
+  IS_MOBILE = narrow || uaMobile || (touch && coarse && smallScreen);
 
   const html = document.documentElement;
   html.classList.toggle("is-mobile", IS_MOBILE);
@@ -988,6 +1223,7 @@ function viewDashboard(){
     </div>`}
 
     <div class="stat-grid">
+      ${statCard("Total Amount", fmtMoney(totalApproved+totalContrib), "var(--primary)", null, "💵")}
       ${statCard("Approved Amount", "₹"+totalApproved.toLocaleString('en-IN'), "var(--s-pass)", null, STAT_ICONS.money_approved)}
       ${statCard("Customer Contribution", "₹"+totalContrib.toLocaleString('en-IN'), "var(--s-inspect)", null, STAT_ICONS.money_contrib)}
       ${statCard("New Claims This Month", thisMonthCount, "var(--primary)", "all", STAT_ICONS.claim_received)}
@@ -1109,14 +1345,14 @@ function renderTableRows(rows){
         <span class="cc-chip">${fmtDateShort(c.ClaimDate)}</span>
         ${c.SerialNumber?`<span class="cc-chip">SR <b>${esc(c.SerialNumber)}</b></span>`:''}
         ${c.DocketNumber?`<span class="cc-chip">DKT <b>${esc(c.DocketNumber)}</b></span>`:''}
-        ${c.ApprovedAmount?`<span class="cc-chip">₹<b>${esc(c.ApprovedAmount)}</b></span>`:''}
+        ${claimTotal(c)>0?`<span class="cc-chip">${fmtMoney(claimTotal(c))}</span>`:''}
       </div>
     </div>`;
   }).join("")}</div>`;
 
   host.innerHTML = cards + `<table>
     <thead><tr>
-      <th>WC ID</th><th>Claim Date</th><th>Customer</th><th>Mobile</th><th>Item</th><th>Serial</th><th>Status</th><th>Docket</th><th>Amount</th>
+      <th>WC ID</th><th>Claim Date</th><th>Customer</th><th>Mobile</th><th>Item</th><th>Serial</th><th>Status</th><th>Docket</th><th>Total</th>
     </tr></thead>
     <tbody>
       ${rows.map(c=>{
@@ -1130,7 +1366,7 @@ function renderTableRows(rows){
           <td class="mono">${esc(c.SerialNumber)}</td>
           <td>${badge(st)}</td>
           <td class="mono">${esc(c.DocketNumber)||'—'}</td>
-          <td class="mono">${c.ApprovedAmount?('₹'+c.ApprovedAmount):'—'}</td>
+          <td class="mono">${claimTotal(c)>0?fmtMoney(claimTotal(c)):'—'}</td>
         </tr>`;
       }).join("")}
     </tbody>
@@ -1153,6 +1389,9 @@ function fmtDate(v){
   return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
 }
 function esc(v){ return (v===undefined||v===null)?'':String(v).replace(/[&<>"]/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[s])); }
+/* Total amount for a claim = Approved Amount + Customer Contribution */
+function claimTotal(c){ return (parseFloat(c.ApprovedAmount)||0) + (parseFloat(c.CustomerContribution)||0); }
+function fmtMoney(n){ return "₹"+Number(n).toLocaleString('en-IN'); }
 
 /* ---------- CHARTS ---------- */
 function drawCharts(){
@@ -1398,15 +1637,16 @@ function renderFormBody(){
   const forcedResult = need.passFields ? "Pass" : (need.failFields ? "Fail" : "");
 
   document.getElementById("formBody").innerHTML = `
+    <div class="req-legend"><span class="req">*</span> marks fields you must fill in.</div>
     <div class="field-section">
       <div class="fs-title">Customer &amp; Claim</div>
       <div class="field-row">
-        <div class="field"><label>Claim Date</label><input type="date" name="ClaimDate" value="${c.ClaimDate}" required></div>
+        <div class="field"><label>Claim Date <span class="req">*</span></label><input type="date" name="ClaimDate" value="${c.ClaimDate}" required></div>
         <div class="field"><label>S. No</label><input type="text" name="S_No" value="${esc(c.S_No)}"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Customer Name</label><input type="text" name="CustomerName" value="${esc(c.CustomerName)}" required></div>
-        <div class="field"><label>Mobile</label><input type="tel" name="CustomerMobile" value="${esc(c.CustomerMobile)}" required></div>
+        <div class="field"><label>Customer Name <span class="req">*</span></label><input type="text" name="CustomerName" value="${esc(c.CustomerName)}" required></div>
+        <div class="field"><label>Mobile <span class="req">*</span></label><input type="tel" name="CustomerMobile" value="${esc(c.CustomerMobile)}" required></div>
       </div>
     </div>
 
@@ -1445,7 +1685,7 @@ function renderFormBody(){
     <div class="field-section">
       <div class="fs-title">Sent to Company</div>
       <div class="field-row">
-        <div class="field"><label>Company Sent Date</label><input type="date" name="CompanySentDate" value="${c.CompanySentDate}" required></div>
+        <div class="field"><label>Company Sent Date <span class="req">*</span></label><input type="date" name="CompanySentDate" value="${c.CompanySentDate}" required></div>
         <div class="field"><label>Docket / Result</label>
           ${need.result ? `<input type="text" value="${forcedResult}" disabled style="font-weight:600;color:${forcedResult==='Pass'?'var(--s-pass)':'var(--s-reject)'}">` : `<input type="text" value="Pending" disabled>`}
           <input type="hidden" name="Result" value="${need.result ? forcedResult : ''}">
@@ -1463,9 +1703,9 @@ function renderFormBody(){
       <div class="fs-title">Pass Flow — New Tyre</div>
       <div class="field-row">
         <div class="field"><label>New Tyre Received Date</label><input type="date" name="NewTyreReceivedDate" value="${c.NewTyreReceivedDate||''}"></div>
-        <div class="field"><label>New Tyre Given to Customer</label><input type="date" name="NewTyreGivenDate" value="${c.NewTyreGivenDate||''}" ${need.requireGiven?'required':''}></div>
+        <div class="field"><label>New Tyre Given to Customer ${need.requireGiven?'<span class="req">*</span>':''}</label><input type="date" name="NewTyreGivenDate" value="${c.NewTyreGivenDate||''}" ${need.requireGiven?'required':''}></div>
       </div>
-      <div class="field-note">${need.requireGiven ? 'This closes the claim as <b>Pass Claims</b>.' : 'Leave "Given to Customer" blank while it waits for pickup — filling it later closes the claim.'}</div>
+      <div class="field-note">${need.requireGiven ? 'Required — this closes the claim as <b>Pass Claims</b>.' : 'Both dates are optional here. Fill "Received" when the new tyre arrives; leave "Given to Customer" blank until they collect it.'}</div>
     </div>` : `<input type="hidden" name="NewTyreReceivedDate" value=""><input type="hidden" name="NewTyreGivenDate" value="">`}
 
     ${need.failFields ? `
@@ -1473,7 +1713,7 @@ function renderFormBody(){
       <div class="fs-title">Fail Flow — Rejected Tyre</div>
       <div class="field-row">
         <div class="field"><label>Company Return Date</label><input type="date" name="CompanyReturnDate" value="${c.CompanyReturnDate||''}"></div>
-        <div class="field"><label>Returned to Customer Date</label><input type="date" name="ReturnedToCustomerDate" value="${c.ReturnedToCustomerDate||''}" ${need.requireReturned?'required':''}></div>
+        <div class="field"><label>Returned to Customer Date ${need.requireReturned?'<span class="req">*</span>':''}</label><input type="date" name="ReturnedToCustomerDate" value="${c.ReturnedToCustomerDate||''}" ${need.requireReturned?'required':''}></div>
       </div>
       <div class="field-note">${need.requireReturned ? 'This closes the claim as <b>Rejected Claims</b>.' : 'Leave "Returned to Customer" blank while it waits for pickup — filling it later closes the claim.'}</div>
     </div>` : `<input type="hidden" name="CompanyReturnDate" value=""><input type="hidden" name="ReturnedToCustomerDate" value="">`}
