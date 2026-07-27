@@ -37,7 +37,7 @@ const HEADERS = ["WC_ID","S No","ClaimDate","CustomerName","CustomerMobile",
   "Company","TyreGroup","TyreItem","SerialNumber","ProblemDescription",
   "DocketNumber","CompanySentDate","Result","ApprovedAmount",
   "CustomerContribution","NewTyreReceivedDate","NewTyreGivenDate",
-  "CompanyReturnDate","ReturnedToCustomerDate","Remark"];
+  "CompanyReturnDate","ReturnedToCustomerDate","Remark","GivenInAdvance","MarkedDone"];
 
 // sheet header "S No" -> app field "S_No"; everything else matches 1:1
 const FIELD_MAP = { "S No": "S_No" };

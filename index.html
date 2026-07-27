@@ -392,6 +392,15 @@ html[data-theme="dark"] .overlay{background:rgba(6,7,8,.6);}
 .field label .req{color:var(--s-reject);font-weight:700;margin-left:2px;}
 .req-legend{font-size:11px;color:var(--text-faint);margin-bottom:14px;}
 .req-legend .req{color:var(--s-reject);font-weight:700;}
+.form-warn{display:flex;gap:8px;background:#fff8e1;border:1px solid #f2d68a;color:#7a5b00;border-radius:10px;padding:11px 13px;margin-bottom:16px;font-size:12.5px;line-height:1.45;}
+.form-warn ul{margin:5px 0 0;padding-left:16px;}
+.form-warn li{margin-bottom:3px;}
+html[data-theme="dark"] .form-warn{background:rgba(242,183,5,.10);border-color:rgba(242,183,5,.35);color:#f2c14e;}
+.warn-tri{color:#e0a800;margin-right:5px;font-size:13px;}
+.has-warn{border-color:#f2d68a !important;}
+.check-row{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;font-size:12.5px;line-height:1.4;color:var(--text-dim);cursor:pointer;}
+.check-row input{margin-top:1px;width:17px;height:17px;flex:none;accent-color:var(--primary);}
+.btn-done{background:color-mix(in srgb, var(--s-pass) 14%, transparent);border-color:color-mix(in srgb, var(--s-pass) 40%, transparent);color:var(--s-pass);font-weight:600;}
 .field input,.field select,.field textarea{
   background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
   padding:9px 12px;color:var(--text);font-size:13.5px;font-family:inherit;outline:none; transition:.12s;
@@ -464,9 +473,14 @@ html[data-theme="dark"] .conn-strip.live{background:rgba(61,220,114,.09);color:#
 
 /* Mobile claim cards replace the wide table */
 .card-list{display:none;}
+.stock-cards{display:none;}
+.stock-card{background:var(--surface-2);border:1px solid var(--border-soft);border-radius:12px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;}
+.stock-card .sc-item{font-size:13px;font-weight:600;color:var(--text);line-height:1.35;}
+.stock-card .sc-meta{display:flex;flex-wrap:wrap;gap:6px;}
 @media(max-width:900px){
   .table-wrap table{display:none;}
   .card-list{display:flex;flex-direction:column;gap:10px;padding:12px;}
+  .stock-cards{display:flex;flex-direction:column;gap:9px;padding:12px;}
   .claim-card{
     background:var(--surface-2);border:1px solid var(--border-soft);border-radius:13px;
     padding:13px 14px;display:flex;flex-direction:column;gap:9px;
@@ -627,6 +641,7 @@ html.is-mobile /* leave room for the bar */
   .main{padding-bottom:86px !important;}
 html.is-mobile .table-wrap table{display:none;}
 html.is-mobile .card-list{display:flex;flex-direction:column;gap:10px;padding:12px;}
+html.is-mobile .stock-cards{display:flex;flex-direction:column;gap:9px;padding:12px;}
 html.is-mobile .claim-card{
     background:var(--surface-2);border:1px solid var(--border-soft);border-radius:13px;
     padding:13px 14px;display:flex;flex-direction:column;gap:9px;
@@ -788,26 +803,66 @@ const STOCK = [{"c":"BRIDGESTONE","g":"PCR","i":"BRI 215/75R15 R400Z","k":"700R1
 
 /* ---------- STATUS DEFINITIONS ---------- */
 const STATUSES = {
-  claim_received:        {label:"Claim Received",             color:"var(--s-received)",      short:"Received"},
-  under_inspection:       {label:"Under Inspection",            color:"var(--s-inspect)",        short:"Inspection"},
-  reject_pickup_pending:  {label:"Rejected Tyre Pickup Pending", color:"var(--s-reject-pend)",    short:"Reject Pickup"},
-  new_tyre_pending:       {label:"New Tyre Pending Customer",    color:"var(--s-newtyre-pend)",   short:"New Tyre Pending"},
-  pass_claims:            {label:"Pass Claims",                 color:"var(--s-pass)",           short:"Pass"},
-  rejected_claims:        {label:"Rejected Claims",              color:"var(--s-reject)",         short:"Rejected"}
+  claim_received:        {label:"Claim Registered",            color:"var(--s-received)",      short:"Registered"},
+  given_in_advance:       {label:"Given in Advance",             color:"var(--s-newtyre-pend)",   short:"Given Advance"},
+  under_inspection:       {label:"At Company",                   color:"var(--s-inspect)",        short:"At Company"},
+  reject_pickup_pending:  {label:"Rejected — Awaiting Pickup",    color:"var(--s-reject-pend)",    short:"Reject Pickup"},
+  new_tyre_pending:       {label:"Passed — Ready for Customer",   color:"var(--s-newtyre-pend)",   short:"New Tyre Ready"},
+  pass_claims:            {label:"Passed — Closed",              color:"var(--s-pass)",           short:"Passed"},
+  rejected_claims:        {label:"Rejected — Closed",             color:"var(--s-reject)",         short:"Rejected"}
 };
-const WORKFLOW_ORDER = ["claim_received","under_inspection","reject_pickup_pending","new_tyre_pending","pass_claims","rejected_claims"];
+const WORKFLOW_ORDER = ["claim_received","given_in_advance","under_inspection","reject_pickup_pending","new_tyre_pending","pass_claims","rejected_claims"];
 
-/* Compute the workflow status of a claim from its fields (mirrors the AppSheet slice logic) */
+/* Compute status from what has ACTUALLY happened, not a fixed order.
+   Reads the strongest fact that is true. Handles the advance-replacement flow
+   (customer given a tyre from your own stock before the company responds). */
 function computeStatus(c){
   const result = (c.Result||"").trim().toLowerCase();
-  if(result === "pass"){
-    return c.NewTyreGivenDate ? "pass_claims" : "new_tyre_pending";
-  }
-  if(result === "fail"){
-    return c.ReturnedToCustomerDate ? "rejected_claims" : "reject_pickup_pending";
-  }
+  const done = isTruthy(c.MarkedDone);
+  const givenAdvance = isTruthy(c.GivenInAdvance);
+
+  // Manually closed by you, or a natural close-out:
+  if(result === "pass" && (c.NewTyreGivenDate || done)) return "pass_claims";
+  if(result === "fail" && (c.ReturnedToCustomerDate || done)) return "rejected_claims";
+  if(done) return result === "fail" ? "rejected_claims" : "pass_claims";
+
+  // Company has given a verdict but the claim isn't closed yet:
+  if(result === "pass") return "new_tyre_pending";     // approved, replacement not yet handed over
+  if(result === "fail") return "reject_pickup_pending"; // rejected, customer hasn't collected
+
+  // No company verdict yet. Did we hand a tyre over in advance from our stock?
+  if(givenAdvance || c.NewTyreGivenDate) return "given_in_advance";
+
+  // Otherwise: sent to company, or just registered.
   return c.CompanySentDate ? "under_inspection" : "claim_received";
 }
+
+/* Warning conditions — things that don't line up and you should look at.
+   Returns an array of short messages (empty = all consistent). */
+function claimWarnings(c){
+  const w = [];
+  const result = (c.Result||"").trim().toLowerCase();
+  const adv = isTruthy(c.GivenInAdvance);
+  // In the advance flow, giving the customer a tyre before the company responds
+  // is normal and expected — so those specific mismatches are NOT warnings.
+  if(!adv){
+    if(c.NewTyreGivenDate && result !== "pass" && result !== "fail")
+      w.push("New tyre given to customer, but the company hasn't given a Pass/Fail result yet.");
+    if(c.NewTyreGivenDate && !c.NewTyreReceivedDate)
+      w.push("New tyre given to customer, but no 'received into stock' date is recorded.");
+    if(result === "pass" && !c.NewTyreReceivedDate)
+      w.push("Marked Pass, but no replacement tyre has been received into your stock.");
+  } else {
+    // Advance case: the one thing to remember is to actually send the claim tyre.
+    if(!c.CompanySentDate && result !== "pass" && result !== "fail")
+      w.push("Given in advance from your stock — remember to send the claim tyre to the company.");
+  }
+  if(result === "fail" && c.NewTyreGivenDate && !adv)
+    w.push("Company rejected this, but a new tyre is marked as given to the customer.");
+  return w;
+}
+function hasWarning(c){ return claimWarnings(c).length > 0; }
+function isTruthy(v){ return v === true || v === "true" || v === "TRUE" || v === "yes" || v === "1" || v === 1; }
 
 /* ---------- THEME ---------- */
 function setTheme(mode){
@@ -836,6 +891,7 @@ function seedDemo(){
     mkClaim({S_No:4, ClaimDate:d(-25), CustomerName:"Aarti Deshmukh", CustomerMobile:"9876500004", Company:"GOODYEAR", TyreGroup:"PCR", TyreItem:"GY TL 215/60R16 94H ASSU MAXGUARD", SerialNumber:"GY44120", ProblemDescription:"Manufacturing defect - bulge", DocketNumber:"DKT-4471", CompanySentDate:d(-22), Result:"Pass", ApprovedAmount:"3200", CustomerContribution:"800", NewTyreReceivedDate:d(-4), NewTyreGivenDate:"", Remark:"New tyre in stock, awaiting customer"}),
     mkClaim({S_No:5, ClaimDate:d(-40), CustomerName:"Vikram Shinde", CustomerMobile:"9876500005", Company:"YOKOHAMA", TyreGroup:"PCR", TyreItem:"YK TL 195/55R16 87V AE51", SerialNumber:"YK09981", ProblemDescription:"Puncture repair failure", DocketNumber:"DKT-4390", CompanySentDate:d(-37), Result:"Pass", ApprovedAmount:"2800", CustomerContribution:"500", NewTyreReceivedDate:d(-30), NewTyreGivenDate:d(-27), Remark:"Closed - customer satisfied"}),
     mkClaim({S_No:6, ClaimDate:d(-55), CustomerName:"Priya Joshi", CustomerMobile:"9876500006", Company:"JK", TyreGroup:"PCR", TyreItem:"JK TL 165/80R14 Ux Royale 85S TL", SerialNumber:"JK77102", ProblemDescription:"Ply separation", DocketNumber:"DKT-4301", CompanySentDate:d(-52), Result:"Fail", ApprovedAmount:"0", CustomerContribution:"0", ReturnedToCustomerDate:d(-45), Remark:"Rejected - normal wear"}),
+    mkClaim({S_No:7, ClaimDate:d(-3), CustomerName:"Imran Qureshi", CustomerMobile:"9876500007", Company:"MRF", TyreGroup:"PCR", TyreItem:"MRF TL 215/55R17 94V WANDERER", SerialNumber:"MR55701", ProblemDescription:"Belt separation - bulge", DocketNumber:"", CompanySentDate:"", Result:"", GivenInAdvance:"true", NewTyreGivenDate:d(-3), Remark:"Gave customer new tyre from our stock same day; claim tyre still to be sent to MRF"}),
   ];
 }
 function mkClaim(fields){
@@ -844,7 +900,8 @@ function mkClaim(fields){
     S_No:"", ClaimDate:"", CustomerName:"", CustomerMobile:"", Company:"", TyreGroup:"", TyreItem:"",
     SerialNumber:"", ProblemDescription:"", DocketNumber:"", CompanySentDate:"", Result:"",
     ApprovedAmount:"", CustomerContribution:"", NewTyreReceivedDate:"", NewTyreGivenDate:"",
-    CompanyReturnDate:"", ReturnedToCustomerDate:"", Remark:""
+    CompanyReturnDate:"", ReturnedToCustomerDate:"", Remark:"",
+    GivenInAdvance:"", MarkedDone:""
   }, fields);
 }
 
@@ -1328,14 +1385,15 @@ function renderTableRows(rows){
     return;
   }
   const badge = (st)=>`<span class="badge" style="background:color-mix(in srgb, ${STATUSES[st].color} 18%, transparent);color:${STATUSES[st].color}"><span class="d" style="background:${STATUSES[st].color}"></span>${STATUSES[st].short}</span>`;
+  const warnMark = (c)=> hasWarning(c) ? `<span class="warn-tri" title="${esc(claimWarnings(c).join(' '))}">⚠</span>` : '';
 
   // Phone: card list. Desktop: table. CSS shows whichever fits.
   const cards = `<div class="card-list">${rows.map(c=>{
     const st = computeStatus(c);
-    return `<div class="claim-card" onclick="openForm('${c.WC_ID}')">
+    return `<div class="claim-card ${hasWarning(c)?'has-warn':''}" onclick="openForm('${c.WC_ID}')">
       <div class="cc-top">
         <div>
-          <div class="cc-name">${esc(c.CustomerName)||'—'}</div>
+          <div class="cc-name">${warnMark(c)}${esc(c.CustomerName)||'—'}</div>
           <div class="cc-mobile">${esc(c.CustomerMobile)||'—'}</div>
         </div>
         <span class="cc-badge">${badge(st)}</span>
@@ -1352,12 +1410,13 @@ function renderTableRows(rows){
 
   host.innerHTML = cards + `<table>
     <thead><tr>
-      <th>WC ID</th><th>Claim Date</th><th>Customer</th><th>Mobile</th><th>Item</th><th>Serial</th><th>Status</th><th>Docket</th><th>Total</th>
+      <th></th><th>WC ID</th><th>Claim Date</th><th>Customer</th><th>Mobile</th><th>Item</th><th>Serial</th><th>Status</th><th>Docket</th><th>Total</th>
     </tr></thead>
     <tbody>
       ${rows.map(c=>{
         const st = computeStatus(c);
         return `<tr onclick="openForm('${c.WC_ID}')">
+          <td>${warnMark(c)}</td>
           <td class="mono">${c.WC_ID}</td>
           <td>${fmtDate(c.ClaimDate)}</td>
           <td class="strong">${esc(c.CustomerName)}</td>
@@ -1470,9 +1529,17 @@ function renderStockTable(){
   const q = (document.getElementById("stockSearch")?.value||"").toLowerCase();
   const host = document.getElementById("stockHost");
   const rows = STOCK.filter(s=> !q || (s.c+" "+s.g+" "+s.i+" "+s.k).toLowerCase().includes(q)).slice(0,300);
-  host.innerHTML = `<table><thead><tr><th>Company</th><th>Group</th><th>Item</th><th>Search Key</th></tr></thead>
+  const more = STOCK.length>300 && !q ? '<div class="mini" style="padding:12px 16px;">Showing first 300 of '+STOCK.length+' — search to narrow down.</div>' : '';
+  // Mobile: stacked cards. Desktop: table. (Stock has its own card markup so it
+  // isn't hidden by the claims-table mobile rule.)
+  const cards = `<div class="stock-cards">${rows.map(s=>`
+    <div class="stock-card">
+      <div class="sc-item">${esc(s.i)}</div>
+      <div class="sc-meta"><span class="cc-chip"><b>${esc(s.c)}</b></span><span class="cc-chip">${esc(s.g)}</span>${s.k?`<span class="cc-chip mono">${esc(s.k)}</span>`:''}</div>
+    </div>`).join("")}</div>`;
+  host.innerHTML = cards + `<table><thead><tr><th>Company</th><th>Group</th><th>Item</th><th>Search Key</th></tr></thead>
   <tbody>${rows.map(s=>`<tr><td class="strong">${esc(s.c)}</td><td>${esc(s.g)}</td><td>${esc(s.i)}</td><td class="mono">${esc(s.k)}</td></tr>`).join("")}</tbody></table>
-  ${STOCK.length>300 && !q ? '<div class="mini" style="padding:12px 16px;">Showing first 300 of '+STOCK.length+' — search to narrow down.</div>' : ''}`;
+  ${more}`;
 }
 function importStock(){
   const raw = document.getElementById("stockPaste").value.trim();
@@ -1545,7 +1612,7 @@ function viewSettings(){
 }
 
 /* ---------- CSV EXPORT ---------- */
-const CSV_COLS = ["WC_ID","S_No","ClaimDate","CustomerName","CustomerMobile","Company","TyreGroup","TyreItem","SerialNumber","ProblemDescription","DocketNumber","CompanySentDate","Result","ApprovedAmount","CustomerContribution","NewTyreReceivedDate","NewTyreGivenDate","CompanyReturnDate","ReturnedToCustomerDate","Remark"];
+const CSV_COLS = ["WC_ID","S_No","ClaimDate","CustomerName","CustomerMobile","Company","TyreGroup","TyreItem","SerialNumber","ProblemDescription","DocketNumber","CompanySentDate","Result","ApprovedAmount","CustomerContribution","NewTyreReceivedDate","NewTyreGivenDate","CompanyReturnDate","ReturnedToCustomerDate","Remark","GivenInAdvance","MarkedDone"];
 function exportCSV(all){
   const rows = all ? claims : _tableRows;
   const lines = [CSV_COLS.join(",")];
@@ -1567,19 +1634,21 @@ function csvSafe(v){
    a claim that's already been passed and handed back, all in one go).
    ========================================================================= */
 const STAGE_OPTIONS = [
-  {key:"claim_received",       label:"Claim Received — just took in the tyre"},
-  {key:"under_inspection",      label:"Under Inspection — sent to company"},
-  {key:"new_tyre_pending",       label:"Company Passed — awaiting customer pickup"},
-  {key:"pass_claims",            label:"Company Passed — closed (given to customer)"},
+  {key:"claim_received",       label:"Claim Registered — just took in the tyre"},
+  {key:"given_in_advance",      label:"Given in Advance — gave customer a tyre from my stock"},
+  {key:"under_inspection",      label:"At Company — sent for inspection"},
+  {key:"new_tyre_pending",       label:"Company Passed — replacement ready / awaiting customer"},
+  {key:"pass_claims",            label:"Company Passed — closed (customer has new tyre)"},
   {key:"reject_pickup_pending",   label:"Company Rejected — awaiting customer pickup"},
   {key:"rejected_claims",         label:"Company Rejected — closed (returned to customer)"}
 ];
 function stageNeeds(stage){
   // which optional sections are visible for a given target stage
   return {
-    sentToCompany: stage !== "claim_received",
-    result: stage !== "claim_received" && stage !== "under_inspection",
-    passFields: stage === "new_tyre_pending" || stage === "pass_claims",
+    advance: stage === "given_in_advance",
+    sentToCompany: stage !== "claim_received" && stage !== "given_in_advance",
+    result: stage === "reject_pickup_pending" || stage === "rejected_claims" || stage === "new_tyre_pending" || stage === "pass_claims",
+    passFields: stage === "new_tyre_pending" || stage === "pass_claims" || stage === "given_in_advance",
     failFields: stage === "reject_pickup_pending" || stage === "rejected_claims",
     requireGiven: stage === "pass_claims",
     requireReturned: stage === "rejected_claims"
@@ -1612,6 +1681,7 @@ function openForm(id){
 
           <div class="drawer-actions">
             <button type="submit" class="btn btn-primary grow">${id?"Save changes":"Create claim"}</button>
+            ${id?`<button type="button" class="btn ${isTruthy(c.MarkedDone)?'':'btn-done'}" onclick="toggleDone()">${isTruthy(c.MarkedDone)?"↩ Reopen":"✓ Mark as Done"}</button>`:''}
             ${id?'<button type="button" class="btn btn-danger" onclick="deleteClaim()">Delete</button>':''}
             <button type="button" class="btn" onclick="closeForm()">Cancel</button>
           </div>
@@ -1638,6 +1708,7 @@ function renderFormBody(){
 
   document.getElementById("formBody").innerHTML = `
     <div class="req-legend"><span class="req">*</span> marks fields you must fill in.</div>
+    ${(() => { const ws = claimWarnings(c); return ws.length ? `<div class="form-warn">⚠ <div><b>Check this claim:</b><ul>${ws.map(x=>`<li>${x}</li>`).join("")}</ul></div></div>` : ""; })()}
     <div class="field-section">
       <div class="fs-title">Customer &amp; Claim</div>
       <div class="field-row">
@@ -1700,13 +1771,17 @@ function renderFormBody(){
 
     ${need.passFields ? `
     <div class="field-section">
-      <div class="fs-title">Pass Flow — New Tyre</div>
+      <div class="fs-title">${need.advance ? 'Advance Replacement — From Your Stock' : 'Pass Flow — New Tyre'}</div>
+      <label class="check-row">
+        <input type="checkbox" name="GivenInAdvance" ${isTruthy(c.GivenInAdvance)?'checked':''}>
+        <span>Given in advance — I gave the customer a tyre from my own stock before the company sent a replacement</span>
+      </label>
       <div class="field-row">
-        <div class="field"><label>New Tyre Received Date</label><input type="date" name="NewTyreReceivedDate" value="${c.NewTyreReceivedDate||''}"></div>
+        <div class="field"><label>New Tyre Received Date <span class="mini">(into your stock)</span></label><input type="date" name="NewTyreReceivedDate" value="${c.NewTyreReceivedDate||''}"></div>
         <div class="field"><label>New Tyre Given to Customer ${need.requireGiven?'<span class="req">*</span>':''}</label><input type="date" name="NewTyreGivenDate" value="${c.NewTyreGivenDate||''}" ${need.requireGiven?'required':''}></div>
       </div>
-      <div class="field-note">${need.requireGiven ? 'Required — this closes the claim as <b>Pass Claims</b>.' : 'Both dates are optional here. Fill "Received" when the new tyre arrives; leave "Given to Customer" blank until they collect it.'}</div>
-    </div>` : `<input type="hidden" name="NewTyreReceivedDate" value=""><input type="hidden" name="NewTyreGivenDate" value="">`}
+      <div class="field-note">${need.advance ? 'Advance case: you already gave the customer a tyre. Tick the box above. "Received" is when the replacement from the company comes back into your stock — leave blank until then.' : (need.requireGiven ? 'Required — this closes the claim as <b>Passed</b>.' : 'Both dates are optional here. Fill "Received" when the new tyre arrives; leave "Given to Customer" blank until they collect it.')}</div>
+    </div>` : `<input type="hidden" name="NewTyreReceivedDate" value=""><input type="hidden" name="NewTyreGivenDate" value=""><input type="hidden" name="GivenInAdvance" value="${isTruthy(c.GivenInAdvance)?'true':''}">`}
 
     ${need.failFields ? `
     <div class="field-section">
@@ -1717,6 +1792,14 @@ function renderFormBody(){
       </div>
       <div class="field-note">${need.requireReturned ? 'This closes the claim as <b>Rejected Claims</b>.' : 'Leave "Returned to Customer" blank while it waits for pickup — filling it later closes the claim.'}</div>
     </div>` : `<input type="hidden" name="CompanyReturnDate" value=""><input type="hidden" name="ReturnedToCustomerDate" value="">`}
+
+    <div class="field-section">
+      <div class="fs-title">Status</div>
+      <label class="check-row">
+        <input type="checkbox" name="MarkedDone" ${isTruthy(c.MarkedDone)?'checked':''}>
+        <span>Mark this claim as <b>Done</b> — no action left, fully closed</span>
+      </label>
+    </div>
 
     <div class="field-section">
       <div class="fs-title">Remark</div>
@@ -1762,8 +1845,14 @@ document.addEventListener("click", (e)=>{
 
 async function saveForm(e){
   e.preventDefault();
-  const fd = new FormData(e.target);
+  const form = e.target;
+  const fd = new FormData(form);
   const obj = {}; fd.forEach((v,k)=>{ if(!(k in obj)) obj[k]=v; }); // first value wins (hidden vs visible dupes)
+  // Checkboxes: FormData omits them when unchecked, so read explicitly.
+  const doneBox = form.querySelector('input[name="MarkedDone"][type="checkbox"]');
+  if(doneBox) obj.MarkedDone = doneBox.checked ? "true" : "";
+  const advBox = form.querySelector('input[name="GivenInAdvance"][type="checkbox"]');
+  if(advBox) obj.GivenInAdvance = advBox.checked ? "true" : "";
   if(editingId){
     const idx = claims.findIndex(c=>c.WC_ID===editingId);
     claims[idx] = Object.assign({}, claims[idx], obj);
@@ -1775,6 +1864,18 @@ async function saveForm(e){
     await persistClaim(nc, true);
     toast("Claim created.");
   }
+  closeForm();
+  render();
+}
+/* Big "Mark as Done" / "Reopen" button on the claim */
+async function toggleDone(){
+  if(!editingId) return;
+  const idx = claims.findIndex(c=>c.WC_ID===editingId);
+  if(idx<0) return;
+  const nowDone = !isTruthy(claims[idx].MarkedDone);
+  claims[idx].MarkedDone = nowDone ? "true" : "";
+  await persistClaim(claims[idx], false);
+  toast(nowDone ? "Marked as done." : "Reopened.");
   closeForm();
   render();
 }
