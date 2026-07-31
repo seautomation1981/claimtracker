@@ -149,7 +149,8 @@ button{font-family:inherit;cursor:pointer;}
   .mobile-topbar{
     display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40;
     background:linear-gradient(190deg, var(--rail-bg-top), var(--rail-bg-bottom) 75%);
-    padding:12px 16px;color:#fff;
+    padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top));color:#fff;
+    min-height:0;box-sizing:border-box;
   }
   .mobile-topbar .mark{
     width:28px;height:28px;flex:none;clip-path:polygon(16% 0,100% 0,84% 100%,0% 100%);
@@ -597,7 +598,7 @@ html.is-mobile #app.show{grid-template-columns:1fr;}
 html.is-mobile .mobile-topbar{
     display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:40;
     background:linear-gradient(190deg, var(--rail-bg-top), var(--rail-bg-bottom) 75%);
-    padding:12px 16px;color:#fff;
+    padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top));color:#fff;
   }
 html.is-mobile .mobile-topbar .mark{
     width:28px;height:28px;flex:none;clip-path:polygon(16% 0,100% 0,84% 100%,0% 100%);
@@ -1139,8 +1140,44 @@ function toggleMobileNav(show){
   if(!sb) return;
   sb.classList.toggle("mobile-open", show);
   if(bd) bd.classList.toggle("show", show);
+  if(show) pushHist("menu");
 }
 window.addEventListener("resize", ()=>{ if(window.innerWidth>900) toggleMobileNav(false); });
+
+/* ===========================================================================
+   BACK BUTTON HANDLING (Android / browser)
+   Each in-app navigation pushes a history entry, so the device back button
+   steps back through the app (close menu → close form → return to dashboard)
+   instead of immediately exiting.
+   =========================================================================== */
+let _histLock = false;
+function pushHist(kind){
+  if(_histLock) return;
+  try{ history.pushState({app:true, kind:kind, view:activeView}, ""); }catch(e){}
+}
+window.addEventListener("popstate", ()=>{
+  // 1. If the slide-in menu is open, back closes it.
+  const sb = document.querySelector(".sidebar");
+  if(sb && sb.classList.contains("mobile-open")){
+    _histLock = true; toggleMobileNav(false); _histLock = false;
+    return;
+  }
+  // 2. If a form/drawer is open, back closes it.
+  if(document.getElementById("formOverlay")){
+    _histLock = true; closeForm(); _histLock = false;
+    return;
+  }
+  // 3. If we're not on the dashboard, back returns to the dashboard.
+  if(activeView !== "dashboard"){
+    _histLock = true; jumpTo("dashboard"); _histLock = false;
+    // keep one entry in the stack so a further back can still exit
+    history.pushState({app:true, kind:"root"}, "");
+    return;
+  }
+  // 4. On the dashboard with nothing open: let the browser do its thing (exit),
+  //    but re-seat one state so a single back doesn't feel abrupt mid-session.
+  history.pushState({app:true, kind:"root"}, "");
+});
 
 /* ---------- BOOT ---------- */
 async function boot(){
@@ -1345,6 +1382,7 @@ function jumpTo(view){
   toggleMobileNav(false);
   render();
   window.scrollTo({top:0, behavior:"instant"});
+  if(view !== "dashboard") pushHist("view");
 }
 function connStrip(){
   if(LOAD_ERROR){
@@ -1722,6 +1760,7 @@ function openForm(id){
   window._formClaim = c;
   renderFormBody();
   document.getElementById("claimForm").addEventListener("submit", saveForm);
+  pushHist("form");
 }
 function closeForm(){
   const ov = document.getElementById("formOverlay");
@@ -1981,7 +2020,7 @@ if("serviceWorker" in navigator){
 
 /* ---------- INIT ---------- */
 detectEnv();   // run immediately so the very first render is correct
-window.addEventListener("load", ()=>{ detectEnv(); initLogin(); updateNetBanner(); });
+window.addEventListener("load", ()=>{ detectEnv(); initLogin(); updateNetBanner(); try{ history.replaceState({app:true, kind:"root"}, ""); }catch(e){} });
 </script>
 </body>
 </html>
