@@ -475,8 +475,8 @@ html[data-theme="dark"] .conn-strip.live{background:rgba(61,220,114,.09);color:#
 }
 
 /* Mobile claim cards replace the wide table */
-.card-list{display:none;}
-.stock-cards{display:none;}
+.card-list{display:flex;flex-direction:column;gap:10px;padding:12px;}
+.stock-cards{display:flex;flex-direction:column;gap:9px;padding:12px;}
 .stock-card{background:var(--surface-2);border:1px solid var(--border-soft);border-radius:12px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;}
 .stock-card .sc-item{font-size:13px;font-weight:600;color:var(--text);line-height:1.35;}
 .stock-card .sc-meta{display:flex;flex-wrap:wrap;gap:6px;}
@@ -640,8 +640,13 @@ html.is-mobile .bn-item.bn-fab .bn-ico{
     box-shadow:0 6px 16px rgba(35,63,132,.4);
   }
 html.is-mobile .bn-item.bn-fab{color:var(--primary);}
-html.is-mobile /* leave room for the bar */
-  .main{padding-bottom:86px !important;}
+html.is-mobile .main{padding-bottom:86px !important;}
+html.is-mobile, html.is-mobile body{overflow-x:hidden;max-width:100vw;}
+html.is-mobile #app{max-width:100vw;overflow-x:hidden;}
+html.is-mobile .main{max-width:100vw;overflow-x:hidden;}
+html.is-mobile .table-wrap{overflow-x:hidden;}
+html.is-mobile .toolbar{flex-wrap:wrap;}
+html.is-mobile .topbar{flex-wrap:wrap;}
 html.is-mobile .table-wrap table{display:none;}
 html.is-mobile .card-list{display:flex;flex-direction:column;gap:10px;padding:12px;}
 html.is-mobile .stock-cards{display:flex;flex-direction:column;gap:9px;padding:12px;}
@@ -1446,7 +1451,9 @@ function renderTableRows(rows){
   const badge = (st)=>`<span class="badge" style="background:color-mix(in srgb, ${STATUSES[st].color} 18%, transparent);color:${STATUSES[st].color}"><span class="d" style="background:${STATUSES[st].color}"></span>${STATUSES[st].short}</span>`;
   const warnMark = (c)=> hasWarning(c) ? `<span class="warn-tri" title="${esc(claimWarnings(c).join(' '))}">⚠</span>` : '';
 
-  // Phone: card list. Desktop: table. CSS shows whichever fits.
+  // Render mobile cards OR desktop table based on JS detection — never both,
+  // so there's no reliance on CSS to hide one. This is what stops the sideways
+  // scrolling: on a phone the wide table is never put in the DOM at all.
   const cards = `<div class="card-list">${rows.map(c=>{
     const st = computeStatus(c);
     return `<div class="claim-card ${hasWarning(c)?'has-warn':''}" onclick="openForm('${c.WC_ID}')">
@@ -1467,7 +1474,9 @@ function renderTableRows(rows){
     </div>`;
   }).join("")}</div>`;
 
-  host.innerHTML = cards + `<table>
+  if(IS_MOBILE){ host.innerHTML = cards; return; }
+
+  host.innerHTML = `<table>
     <thead><tr>
       <th></th><th>WC ID</th><th>Claim Date</th><th>Customer</th><th>Mobile</th><th>Item</th><th>Serial</th><th>Status</th><th>Docket</th><th>Total</th>
     </tr></thead>
@@ -1596,7 +1605,8 @@ function renderStockTable(){
       <div class="sc-item">${esc(s.i)}</div>
       <div class="sc-meta"><span class="cc-chip"><b>${esc(s.c)}</b></span><span class="cc-chip">${esc(s.g)}</span>${s.k?`<span class="cc-chip mono">${esc(s.k)}</span>`:''}</div>
     </div>`).join("")}</div>`;
-  host.innerHTML = cards + `<table><thead><tr><th>Company</th><th>Group</th><th>Item</th><th>Search Key</th></tr></thead>
+  if(IS_MOBILE){ host.innerHTML = cards + more; return; }
+  host.innerHTML = `<table><thead><tr><th>Company</th><th>Group</th><th>Item</th><th>Search Key</th></tr></thead>
   <tbody>${rows.map(s=>`<tr><td class="strong">${esc(s.c)}</td><td>${esc(s.g)}</td><td>${esc(s.i)}</td><td class="mono">${esc(s.k)}</td></tr>`).join("")}</tbody></table>
   ${more}`;
 }
