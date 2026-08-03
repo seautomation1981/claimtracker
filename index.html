@@ -392,6 +392,11 @@ html[data-theme="dark"] .overlay{background:rgba(6,7,8,.6);}
 .field label{font-size:11.5px;color:var(--text-dim);font-weight:500;}
 .field label .req{color:var(--s-reject);font-weight:700;margin-left:2px;}
 .req-legend{font-size:11px;color:var(--text-faint);margin-bottom:14px;}
+.cust-picker{display:flex;gap:8px;align-items:stretch;}
+.cust-picker select,.cust-picker input{flex:1;min-width:0;}
+.cust-picker .cust-toggle{flex:none;white-space:nowrap;}
+html.is-mobile .cust-picker{flex-direction:column;}
+html.is-mobile .cust-picker .cust-toggle{align-self:flex-start;}
 .req-legend .req{color:var(--s-reject);font-weight:700;}
 .form-warn{display:flex;gap:8px;background:#fff8e1;border:1px solid #f2d68a;color:#7a5b00;border-radius:10px;padding:11px 13px;margin-bottom:16px;font-size:12.5px;line-height:1.45;}
 .form-warn ul{margin:5px 0 0;padding-left:16px;}
@@ -1778,6 +1783,40 @@ function closeForm(){
   editingId = null;
 }
 
+/* ---------- CUSTOMER PICKER ----------
+   A strict dropdown of names already on record (deduped, case-insensitive),
+   with a separate "Add new" toggle. Keeps one clean name per customer so
+   per-customer analysis stays accurate. */
+function uniqueCustomerNames(){
+  const seen = new Map();   // lowercased -> original display form
+  claims.forEach(c=>{
+    const n = (c.CustomerName||"").trim();
+    if(!n) return;
+    const key = n.toLowerCase();
+    if(!seen.has(key)) seen.set(key, n);
+  });
+  return [...seen.values()].sort((a,b)=>a.localeCompare(b));
+}
+function toggleCustMode(){
+  const wrap = document.querySelector(".cust-picker");
+  if(!wrap) return;
+  const sel = document.getElementById("custSelect");
+  const inp = document.getElementById("custNewInput");
+  const btn = wrap.querySelector(".cust-toggle");
+  const goingNew = wrap.dataset.mode !== "new";
+  wrap.dataset.mode = goingNew ? "new" : "existing";
+  if(goingNew){
+    sel.style.display = "none"; sel.removeAttribute("required"); sel.value = "";
+    inp.style.display = "block"; inp.setAttribute("required","required"); inp.focus();
+    btn.textContent = "↩ Pick existing";
+  }else{
+    inp.style.display = "none"; inp.removeAttribute("required"); inp.value = "";
+    sel.style.display = "block"; sel.setAttribute("required","required");
+    btn.textContent = "+ Add new";
+  }
+}
+function onCustSelect(sel){ /* reserved: could auto-fill mobile from last claim */ }
+
 function renderFormBody(){
   const c = window._formClaim;
   const stage = document.getElementById("fStage").value;
@@ -1794,7 +1833,23 @@ function renderFormBody(){
         <div class="field"><label>S. No</label><input type="text" name="S_No" value="${esc(c.S_No)}"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label>Customer Name <span class="req">*</span></label><input type="text" name="CustomerName" value="${esc(c.CustomerName)}" required></div>
+        <div class="field">
+          <label>Customer Name <span class="req">*</span></label>
+          ${(() => {
+            const names = uniqueCustomerNames();
+            const cur = c.CustomerName || "";
+            const isNew = cur && !names.includes(cur);
+            return `
+            <div class="cust-picker" data-mode="${isNew?'new':'existing'}">
+              <select name="CustomerName" id="custSelect" onchange="onCustSelect(this)" ${isNew?'style="display:none"':''} ${isNew?'':'required'}>
+                <option value="">— Select existing customer —</option>
+                ${names.map(n=>`<option value="${esc(n)}" ${n===cur?'selected':''}>${esc(n)}</option>`).join("")}
+              </select>
+              <input type="text" name="CustomerNameNew" id="custNewInput" placeholder="Type new customer name" value="${isNew?esc(cur):''}" ${isNew?'style="display:block" required':'style="display:none"'}>
+              <button type="button" class="btn btn-sm cust-toggle" onclick="toggleCustMode()">${isNew?'↩ Pick existing':'+ Add new'}</button>
+            </div>`;
+          })()}
+        </div>
         <div class="field"><label>Mobile <span class="req">*</span></label><input type="tel" name="CustomerMobile" value="${esc(c.CustomerMobile)}" required></div>
       </div>
     </div>
@@ -1950,6 +2005,15 @@ async function saveForm(e){
   if(doneBox) obj.MarkedDone = doneBox.checked ? "true" : "";
   const advBox = form.querySelector('input[name="GivenInAdvance"][type="checkbox"]');
   if(advBox) obj.GivenInAdvance = advBox.checked ? "true" : "";
+  // Customer picker: if "Add new" was used, that value is the real name.
+  if(obj.CustomerNameNew && obj.CustomerNameNew.trim()){
+    obj.CustomerName = obj.CustomerNameNew.trim();
+  }
+  delete obj.CustomerNameNew;
+  if(!obj.CustomerName || !obj.CustomerName.trim()){
+    toast("Please pick a customer or add a new one.");
+    return;
+  }
   if(editingId){
     const idx = claims.findIndex(c=>c.WC_ID===editingId);
     claims[idx] = Object.assign({}, claims[idx], obj);
