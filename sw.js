@@ -12,7 +12,7 @@
  *   - data  -> never touched. Always live.
  */
 
-const VERSION = "v10";
+const VERSION = "v11";
 const SHELL_CACHE = "claimtracker-shell-" + VERSION;
 
 const STATIC = [
